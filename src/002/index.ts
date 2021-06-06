@@ -166,14 +166,13 @@ const WING_PARAM = {
         render();
     }
 
-    // 1秒に30°
-    let degree = 0;
+    let radian = 0;
     function render() {
         requestAnimationFrame(render);
-        degree += 0.01
+        radian += 0.01
 
         motorAndWing.rotation.z -= FAN.speed;
-        fanFace.rotation.y = Math.sin(degree);
+        fanFace.rotation.y = Math.sin(radian);
 
         renderer.render(scene, camera);
     };
