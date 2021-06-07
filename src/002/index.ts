@@ -1,5 +1,6 @@
 import * as THREE from "three";
 import { OrbitControls } from "three-orbitcontrols-ts";
+import { TweenMax, Bounce } from "gsap";
 
 // カメラに関するパラメータ @@@
 const CAMERA_PARAM = {
@@ -71,6 +72,8 @@ const WING_PARAM = {
             const intersects = raycaster.intersectObjects([fanOnButton, fanOffButton]);
             if(intersects.length > 0){
                 if (intersects[0].object.userData.isOnButton) {
+                    const button = intersects[0].object;
+                    buttonAnimation(button);
                     if (fanSpeed === 弱) {
                         fanSpeed = 中;
                     }else if (fanSpeed === 中) {
@@ -81,6 +84,8 @@ const WING_PARAM = {
                     }
                 }
                 if (intersects[0].object.userData.isOffButton) {
+                    const button = intersects[0].object;
+                    buttonAnimation(button);
                     fanSpeed = 止;
                     swingSpeed = 止;
                 }
@@ -203,5 +208,20 @@ const WING_PARAM = {
 
         renderer.render(scene, camera);
     };
+
+    function buttonAnimation(button: THREE.Object3D) {   
+        TweenMax.to(
+            button.position, 0.2,
+            { 
+                z: 1,
+                onComplete: () => {
+                    TweenMax.to(
+                        button.position, 0.2,
+                        { z: 1.5 }
+                    )
+                }
+            }                  
+        )
+    }
 
 })();

@@ -19,6 +19,7 @@
   },
   "dependencies": {
     "@types/three": "^0.126.2",
+    "gsap": "^3.6.1",
     "three": "^0.127.0",
     "three-orbitcontrols-ts": "git+https://git@github.com/nicolaspanel/three-orbitcontrols-ts.git"
   }
