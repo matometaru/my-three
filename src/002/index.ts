@@ -26,18 +26,12 @@ const RENDERER_PARAM = {
     height: window.innerHeight,
 };
 
+const 止 = 0;
 const 弱 = 0.05;
 const 中 = 0.2;
 const 強 = 0.4;
-
-const OFF = 0;
-const ON = 1;
-
-// 扇風機に関するパラメータ
-const FAN = {
-    speed: 弱,
-    run: ON,
-};
+const speeds =  [止, 弱, 中, 強] as const;
+type SPEED = typeof speeds[number];
 
 // 扇風機のカバーに関するパラメータ
 const COVER_PARAM = {
@@ -76,20 +70,19 @@ const WING_PARAM = {
 
             const intersects = raycaster.intersectObjects([fanOnButton, fanOffButton]);
             if(intersects.length > 0){
-                console.log(intersects);
                 if (intersects[0].object.userData.isOnButton) {
                     if (fanSpeed === 弱) {
                         fanSpeed = 中;
                     }else if (fanSpeed === 中) {
                         fanSpeed = 強;
-                    }else if (fanSpeed === 強 || fanSpeed === 0) {
+                    }else if (fanSpeed === 強 || fanSpeed === 止) {
                         fanSpeed = 弱;
                         swingSpeed = 0.01;
                     }
                 }
                 if (intersects[0].object.userData.isOffButton) {
-                    fanSpeed = 0;
-                    swingSpeed = 0;
+                    fanSpeed = 止;
+                    swingSpeed = 止;
                 }
             }
         }, false);
@@ -103,7 +96,7 @@ const WING_PARAM = {
     let renderer: THREE.WebGLRenderer;
     const raycaster = new THREE.Raycaster();
 
-    let fanSpeed = FAN.speed;
+    let fanSpeed: SPEED = 弱;
     let swingSpeed = 0.01;
 
     const motorAndWing = new THREE.Group();
