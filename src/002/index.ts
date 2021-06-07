@@ -27,8 +27,8 @@ const RENDERER_PARAM = {
 };
 
 const 弱 = 0.05;
-const 中 = 0.1;
-const 強 = 0.15;
+const 中 = 0.2;
+const 強 = 0.4;
 
 const OFF = 0;
 const ON = 1;
@@ -60,19 +60,6 @@ const WING_PARAM = {
 
 (() => {
     window.addEventListener("DOMContentLoaded", () => {
-        // キーダウンイベントの定義
-        window.addEventListener('keydown', (event) => {
-            switch(event.key){
-                case 'Escape':
-                    run = event.key !== 'Escape';
-                    break;
-                case ' ':
-                    isDown = true;
-                    break;
-                default:
-            }
-        }, false);
-
         // リサイズイベントの定義
         window.addEventListener('resize', () => {
             renderer.setSize(window.innerWidth, window.innerHeight);
@@ -80,22 +67,50 @@ const WING_PARAM = {
             camera.updateProjectionMatrix();
         }, false);
 
+        // マウスのクリックイベントの定義
+        window.addEventListener('click', (event) => {
+            const x = event.clientX / window.innerWidth * 2.0 - 1.0;
+            const y = event.clientY / window.innerHeight * 2.0 - 1.0;
+            const v = new THREE.Vector2(x, -y);
+            raycaster.setFromCamera(v, camera);
+
+            const intersects = raycaster.intersectObjects([fanOnButton, fanOffButton]);
+            if(intersects.length > 0){
+                console.log(intersects);
+                if (intersects[0].object.userData.isOnButton) {
+                    if (fanSpeed === 弱) {
+                        fanSpeed = 中;
+                    }else if (fanSpeed === 中) {
+                        fanSpeed = 強;
+                    }else if (fanSpeed === 強 || fanSpeed === 0) {
+                        fanSpeed = 弱;
+                        swingSpeed = 0.01;
+                    }
+                }
+                if (intersects[0].object.userData.isOffButton) {
+                    fanSpeed = 0;
+                    swingSpeed = 0;
+                }
+            }
+        }, false);
+
         init();
     }, false);
-
-    // 汎用変数
-    let run = true;     // レンダリングループフラグ
-    let isDown = false; // スペースキーが押されているかどうかのフラグ
 
     // three.js に関連するオブジェクト用の変数
     let scene;
     let camera;
     let renderer: THREE.WebGLRenderer;
-    let controls;
+    const raycaster = new THREE.Raycaster();
+
+    let fanSpeed = FAN.speed;
+    let swingSpeed = 0.01;
 
     const motorAndWing = new THREE.Group();
     // 扇風機の顔（カバー+モーター+羽）
     const fanFace = new THREE.Group();
+    let fanOnButton: THREE.Mesh;
+    let fanOffButton: THREE.Mesh;
 
     function init() {
         // レンダラー
@@ -117,7 +132,7 @@ const WING_PARAM = {
         );
         camera.position.set(CAMERA_PARAM.x, CAMERA_PARAM.y, CAMERA_PARAM.z);
         camera.lookAt(CAMERA_PARAM.lookAt);
-        controls = new OrbitControls(camera, renderer.domElement);
+        new OrbitControls(camera, renderer.domElement);
 
         const axes = new THREE.AxesHelper(30);
         scene.add(axes);
@@ -163,20 +178,37 @@ const WING_PARAM = {
         扇風機の支柱.position.set(0, 2, 0);
         scene.add(扇風機の支柱);
 
+        // 扇風機の「入」ボタン
+        const fanButtonGeometry = new THREE.SphereGeometry(0.5);
+        const fanOnButtonMaterial = new THREE.MeshBasicMaterial({color: 0x0000FF });
+        fanOnButton = new THREE.Mesh(fanButtonGeometry, fanOnButtonMaterial);
+        fanOnButton.position.x = 1;
+        fanOnButton.position.z = 1.5;
+        fanOnButton.position.y = 1;
+        fanOnButton.userData.isOnButton = true;
+        scene.add(fanOnButton);
+        
+        // 扇風機の「切」ボタン
+        const fanOffButtonMaterial = new THREE.MeshBasicMaterial({color: 0xFF0000 });
+        fanOffButton = new THREE.Mesh(fanButtonGeometry, fanOffButtonMaterial);
+        fanOffButton.position.x = -1;
+        fanOffButton.position.z = 1.5;
+        fanOffButton.position.y = 1;
+        fanOffButton.userData.isOffButton = true;
+        scene.add(fanOffButton);
+
         render();
     }
 
     let radian = 0;
     function render() {
         requestAnimationFrame(render);
-        radian += 0.01
+        radian += swingSpeed;
 
-        motorAndWing.rotation.z -= FAN.speed;
+        motorAndWing.rotation.z -= fanSpeed;
         fanFace.rotation.y = Math.sin(radian);
 
         renderer.render(scene, camera);
     };
-
-    // get
 
 })();
