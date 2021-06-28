@@ -7,6 +7,7 @@ module.exports = {
     entry: {
       "001/index": "./src/001/index.ts",
       "002/index": "./src/002/index.ts",
+      "003/index": "./src/003/index.ts",
     },
     // ファイルの出力設定
     output: {
