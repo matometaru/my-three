@@ -70,7 +70,7 @@ const EARTH_ORBIT = {
 };
 
 (() => {
-    window.addEventListener("DOMContentLoaded", () => {
+    window.addEventListener("DOMContentLoaded", async () => {
         // キーダウンイベント
         window.addEventListener('keydown', (event: KeyboardEvent) => {
             switch(event.key){
@@ -80,9 +80,6 @@ const EARTH_ORBIT = {
                     break;
                 case ' ':
                     isShotted = true;
-                    console.log("太陽に向かって弾を打つ");
-                    console.log("地球グループのベクトル");
-                    // console.log(earthAndMoon.position);
                     // その時の弾の単位ベクトルを求める
                     bulletUnitVector = sun.position.clone().sub(earthAndMoon.position).normalize();
                     bulletVector = bulletUnitVector.clone().multiplyScalar(0.1);
@@ -107,6 +104,7 @@ const EARTH_ORBIT = {
 
         // 2つの画像のロードとテクスチャの生成
         const loader = new THREE.TextureLoader();
+        sunTexture = await asyncLoader('./magma.png');
         earthTexture = loader.load('./earth.jpg', () => {
             // 月の画像がテクスチャとして生成できたら init を呼ぶ
             moonTexture = loader.load('./moon.jpg', init);
@@ -171,26 +169,32 @@ const EARTH_ORBIT = {
         // スフィアジオメトリの生成
         geometry = new THREE.SphereGeometry(1.0, 64, 64);
 
-        // 太陽生成
-        sunMaterial = new THREE.MeshLambertMaterial(MATERIAL_PARAM);
-        // sunMaterial.map = sunTexture;
-        sun = new THREE.Mesh(geometry, moonMaterial);
-        scene.add(sun);
-
+        // 弾
         bullet = new THREE.Mesh(geometry, moonMaterial);
         scene.add(bullet);
 
-        // マテリアルを生成し、テクスチャを設定する
+        // 太陽
+        sunMaterial = new THREE.MeshLambertMaterial(MATERIAL_PARAM);
+        sunMaterial.map = sunTexture;
+        sun = new THREE.Mesh(geometry, sunMaterial);
+        sun.scale.setScalar(2);
+        scene.add(sun);
+
+        // 地球
         earthMaterial = new THREE.MeshLambertMaterial(MATERIAL_PARAM);
         earthMaterial.map = earthTexture;
-        moonMaterial = new THREE.MeshLambertMaterial(MATERIAL_PARAM);
-        moonMaterial.map = moonTexture;
         earth = new THREE.Mesh(geometry, earthMaterial);
         earthAndMoon.add(earth);
+
+        // 月
+        moonMaterial = new THREE.MeshLambertMaterial(MATERIAL_PARAM);
+        moonMaterial.map = moonTexture;
         moon = new THREE.Mesh(geometry, moonMaterial);
         moon.scale.setScalar(0.36);
         moon.position.set(MOON_RANGE, 0.0, 0.0);
         earthAndMoon.add(moon);
+
+        // 月の軌道を作成
         const moonPoints = creatOrbitPoints(
             MOON_ORBIT.vector1,
             MOON_ORBIT.vector2,
@@ -204,6 +208,7 @@ const EARTH_ORBIT = {
         scene.add(earthAndMoon);
         earthAndMoon.position
 
+        // 地球の軌道を作成
         const earthPoints = creatOrbitPoints(
             EARTH_ORBIT.vector1,
             EARTH_ORBIT.vector2,
@@ -315,5 +320,12 @@ const EARTH_ORBIT = {
         }
         return vertices;
     };
+
+    async function asyncLoader(path: string): Promise<THREE.Texture> {
+        const loader = new THREE.TextureLoader();
+        return new Promise((resolve, reject) => {
+            loader.load(path, (texture) => {resolve(texture)});
+        });
+    }
 
 })();
