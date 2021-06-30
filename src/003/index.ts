@@ -71,6 +71,33 @@ const EARTH_ORBIT = {
 
 (() => {
     window.addEventListener("DOMContentLoaded", () => {
+        // キーダウンイベント
+        window.addEventListener('keydown', (event: KeyboardEvent) => {
+            switch(event.key){
+                case 'Escape':
+                    run = !run;
+                    if(run === true){requestAnimationFrame(render);}
+                    break;
+                case ' ':
+                    isShotted = true;
+                    console.log("太陽に向かって弾を打つ");
+                    console.log("地球グループのベクトル");
+                    // console.log(earthAndMoon.position);
+                    // その時の弾の単位ベクトルを求める
+                    bulletUnitVector = sun.position.clone().sub(earthAndMoon.position).normalize();
+                    bulletVector = bulletUnitVector.clone().multiplyScalar(0.1);
+                    console.log(bulletUnitVector);
+                    // 弾の初期位置を地球と同じにする
+                    bullet.position.set(
+                        earthAndMoon.position.x,
+                        earthAndMoon.position.y,
+                        earthAndMoon.position.z,
+                    );
+                    break;
+                default:
+            }
+        }, false);
+
         // リサイズイベントの定義
         window.addEventListener('resize', () => {
             renderer.setSize(window.innerWidth, window.innerHeight);
@@ -86,6 +113,7 @@ const EARTH_ORBIT = {
         });
     }, false);
 
+    let run = true;
     let startTime = 0; // レンダリング開始時のタイムスタンプ @@@
 
     let directionalLight;  // ディレクショナル・ライト（平行光源）
@@ -93,8 +121,19 @@ const EARTH_ORBIT = {
     
     let geometry;          // ジオメトリ
 
+    let sun: THREE.Mesh;
+    let sunMaterial;
+    let sunTexture;
+
+    let bullet: THREE.Mesh;
+    // スペース押された時の弾の単位ベクトル
+    let bulletUnitVector: THREE.Vector3;
+    // 単位ベクトルをスカラー倍した実際の移動量
+    let bulletVector: THREE.Vector3;
+    let isShotted: boolean = false;
+
     let earthAndMoon = new THREE.Group();
-    let earth: THREE.Mesh;             // 地球のメッシュ
+    let earth: THREE.Mesh; // 地球のメッシュ
     let earthMaterial;     // 地球用マテリアル
     let earthTexture;      // 地球用テクスチャ
     let moon: THREE.Mesh;              // 月のメッシュ
@@ -132,6 +171,15 @@ const EARTH_ORBIT = {
         // スフィアジオメトリの生成
         geometry = new THREE.SphereGeometry(1.0, 64, 64);
 
+        // 太陽生成
+        sunMaterial = new THREE.MeshLambertMaterial(MATERIAL_PARAM);
+        // sunMaterial.map = sunTexture;
+        sun = new THREE.Mesh(geometry, moonMaterial);
+        scene.add(sun);
+
+        bullet = new THREE.Mesh(geometry, moonMaterial);
+        scene.add(bullet);
+
         // マテリアルを生成し、テクスチャを設定する
         earthMaterial = new THREE.MeshLambertMaterial(MATERIAL_PARAM);
         earthMaterial.map = earthTexture;
@@ -154,6 +202,7 @@ const EARTH_ORBIT = {
         earthAndMoon.add(moonOrbitPoints);
         earthAndMoon.position.set(EARTH_RANGE, 0.0, 0.0);
         scene.add(earthAndMoon);
+        earthAndMoon.position
 
         const earthPoints = creatOrbitPoints(
             EARTH_ORBIT.vector1,
@@ -182,8 +231,8 @@ const EARTH_ORBIT = {
         );
         scene.add(ambientLight);
 
-        // const axes = new THREE.AxesHelper(30);
-        // scene.add(axes);
+        const axes = new THREE.AxesHelper(30);
+        scene.add(axes);
     
         // レンダリング開始の瞬間のタイムスタンプを変数に保持しておく @@@
         startTime = Date.now();
@@ -192,20 +241,31 @@ const EARTH_ORBIT = {
     }
 
     function render() {
-        requestAnimationFrame(render);
+        if(run === true){requestAnimationFrame(render);}
         
         const nowTime = (Date.now() - startTime) / 1000;
+        // 月の軌道上を動かす
         const moonVector3 = getXxx(MOON_ORBIT.vector1, MOON_ORBIT.vector2, nowTime);
         moon.position.set(moonVector3.x, moonVector3.y, moonVector3.z);
 
+        // 地球の軌道上を動かす
         const earthVector3 = getXxx(EARTH_ORBIT.vector1, EARTH_ORBIT.vector2, nowTime/4);
         earthAndMoon.position.set(earthVector3.x, earthVector3.y, earthVector3.z);
 
+        // 弾の位置を更新
+        if (isShotted) {
+            bullet.position.add(bulletVector);
+        }
+
+        // 地球自転
         earthAndMoon.rotation.y += 0.005;
 
         renderer.render(scene, camera);
     };
 
+    /**
+     * 2つのベクトルから軌道を取得（内部でクオータニオンを使用）
+     */
     const getXxx = (
         vector1: THREE.Vector3,
         vector2: THREE.Vector3,
