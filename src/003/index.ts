@@ -83,7 +83,6 @@ const EARTH_ORBIT = {
                     // その時の弾の単位ベクトルを求める
                     bulletUnitVector = sun.position.clone().sub(earthAndMoon.position).normalize();
                     bulletVector = bulletUnitVector.clone().multiplyScalar(0.1);
-                    console.log(bulletUnitVector);
                     // 弾の初期位置を地球と同じにする
                     bullet.position.set(
                         earthAndMoon.position.x,
@@ -121,10 +120,9 @@ const EARTH_ORBIT = {
     let geometry;          // ジオメトリ
 
     let sun: THREE.Mesh;
-    let sunMaterial;
+    let sunMaterial: THREE.MeshLambertMaterial;
     let sunTexture: THREE.Texture;
     let sunGlowTexture: THREE.Texture;
-    // マテリアル
     let sunGlowMaterial: THREE.SpriteMaterial;
 
     let bullet: THREE.Mesh;
@@ -135,12 +133,17 @@ const EARTH_ORBIT = {
     let isShotted: boolean = false;
 
     let earthAndMoon = new THREE.Group();
-    let earth: THREE.Mesh; // 地球のメッシュ
-    let earthMaterial;     // 地球用マテリアル
-    let earthTexture;      // 地球用テクスチャ
-    let moon: THREE.Mesh;              // 月のメッシュ
-    let moonMaterial;      // 月用マテリアル
-    let moonTexture;       // 月用テクスチャ
+    let earth: THREE.Mesh;
+    let earthMaterial: THREE.MeshLambertMaterial;
+    let earthTexture: THREE.Texture
+    let moon: THREE.Mesh;
+    let moonMaterial: THREE.MeshLambertMaterial; 
+    let moonTexture: THREE.Texture
+
+    let rocketGeometry;
+    let rocket: THREE.Mesh;
+    let rocketMaterial;
+    let rocketVector: THREE.Vector3;
 
     // three.js に関連するオブジェクト用の変数
     let scene: THREE.Scene;
@@ -175,6 +178,7 @@ const EARTH_ORBIT = {
 
         // 弾
         bullet = new THREE.Mesh(geometry, moonMaterial);
+        bullet.scale.setScalar(0.3);
         scene.add(bullet);
 
         // 太陽
@@ -208,6 +212,17 @@ const EARTH_ORBIT = {
         moon.scale.setScalar(0.36);
         moon.position.set(MOON_RANGE, 0.0, 0.0);
         earthAndMoon.add(moon);
+
+        // ロケット @@@
+        rocketGeometry = new THREE.ConeGeometry(0.2, 0.5, 32);
+        rocketMaterial = new THREE.MeshLambertMaterial({color: 0x00ffff});
+        rocket = new THREE.Mesh(rocketGeometry, rocketMaterial);
+        rocket.scale.setScalar(5);
+        // 初期位置を地球の上のあたりに移動させておく
+        rocket.position.set(0.0, 2.0, 0.0);
+        // ロケットの進行方向の初期値を設定しておく（真上に向かう）
+        rocketVector = new THREE.Vector3(0.0, -1.0, 0.0);
+        earthAndMoon.add(rocket);
 
         // 月の軌道を作成
         const moonPoints = creatOrbitPoints(
@@ -251,8 +266,8 @@ const EARTH_ORBIT = {
         );
         scene.add(ambientLight);
 
-        const axes = new THREE.AxesHelper(30);
-        scene.add(axes);
+        // const axes = new THREE.AxesHelper(30);
+        // scene.add(axes);
     
         // レンダリング開始の瞬間のタイムスタンプを変数に保持しておく @@@
         startTime = Date.now();
@@ -262,6 +277,7 @@ const EARTH_ORBIT = {
 
     function render() {
         if(run === true){requestAnimationFrame(render);}
+        const prevVector = earthAndMoon.position.clone();
         
         const nowTime = (Date.now() - startTime) / 1000;
         // 月の軌道上を動かす
@@ -276,6 +292,33 @@ const EARTH_ORBIT = {
         if (isShotted) {
             bullet.position.add(bulletVector);
         }
+
+        // ロケットと月の位置関係からベクトルを作り、単位化する（以前と同じ内容）
+        const vectorOfSatelliteToMoon = sun.position.clone().sub(earthAndMoon.position);
+        vectorOfSatelliteToMoon.normalize();
+        // 相互の位置関係ベクトルと、ロケットの進行方向とを合成する
+        vectorOfSatelliteToMoon.multiplyScalar(0.1); // まずはちょっと小さくして……
+        rocketVector.add(vectorOfSatelliteToMoon); // 次にこれを加算して……
+        rocketVector.normalize(); // (B) 最後に進行方向ベクトルは単位化する
+        // rocket.position.add(rocketVector.clone().multiplyScalar(0.05));
+
+        // - クォータニオン関連 -----------------------------------------------
+        // ここは数学的な予備知識のあるひと向けのオマケです。
+        // ベクトルの内積や外積が何を表すものなのかがわかっていないと、ちょっと
+        // 意味不明な可能性が大きいですので、仮に見ても意味がわからなかったとし
+        // ても、落ち込まないように！
+        // --------------------------------------------------------------------
+        // (C) 変換前と変換後のふたつのベクトルから外積で接線ベクトルを求める @@@
+        const tangent = new THREE.Vector3().crossVectors(prevVector, rocketVector).normalize();
+        // (D) 変換前と変換後のふたつのベクトルから内積でコサインを取り出す @@@
+        const cos = prevVector.dot(rocketVector);
+        // (D) コサインをラジアンに戻す @@@
+        const radians = Math.acos(cos);
+        // 求めた接線ベクトルとラジアンからクォータニオンを定義 @@@
+        const qtn = new THREE.Quaternion();
+        qtn.setFromAxisAngle(new THREE.Vector3(tangent.x, tangent.y, tangent.z), radians);
+        // ロケットの現在のクォータニオンに乗算する @@@
+        rocket.quaternion.premultiply(qtn);
 
         sunTexture.offset.x += 0.001;
         sunTexture.offset.y += 0.001;
