@@ -103,12 +103,13 @@ const EARTH_ORBIT = {
         }, false);
 
         // 2つの画像のロードとテクスチャの生成
-        const loader = new THREE.TextureLoader();
-        sunTexture = await asyncLoader('./magma.png');
-        earthTexture = loader.load('./earth.jpg', () => {
-            // 月の画像がテクスチャとして生成できたら init を呼ぶ
-            moonTexture = loader.load('./moon.jpg', init);
-        });
+        [sunTexture, earthTexture, moonTexture, sunGlowTexture] = await Promise.all([
+            asyncLoader('./magma.png'),
+            asyncLoader('./earth.jpg'),
+            asyncLoader('./moon.jpg'),
+            asyncLoader('./glow2.png'),
+        ]);
+        init();
     }, false);
 
     let run = true;
@@ -121,7 +122,10 @@ const EARTH_ORBIT = {
 
     let sun: THREE.Mesh;
     let sunMaterial;
-    let sunTexture;
+    let sunTexture: THREE.Texture;
+    let sunGlowTexture: THREE.Texture;
+    // マテリアル
+    let sunGlowMaterial: THREE.SpriteMaterial;
 
     let bullet: THREE.Mesh;
     // スペース押された時の弾の単位ベクトル
@@ -176,9 +180,20 @@ const EARTH_ORBIT = {
         // 太陽
         sunMaterial = new THREE.MeshLambertMaterial(MATERIAL_PARAM);
         sunMaterial.map = sunTexture;
+        sunTexture.wrapS = sunTexture.wrapT = THREE.RepeatWrapping;
         sun = new THREE.Mesh(geometry, sunMaterial);
-        sun.scale.setScalar(2);
+        sun.scale.setScalar(3);
         scene.add(sun);
+
+        sunGlowMaterial = new THREE.SpriteMaterial({
+            map: sunGlowTexture,
+            color: 0xffffff,
+            blending: THREE.AdditiveBlending,
+            transparent: true
+        });
+        const sprite = new THREE.Sprite(sunGlowMaterial)
+        sprite.scale.multiplyScalar(10);
+        scene.add(sprite);
 
         // 地球
         earthMaterial = new THREE.MeshLambertMaterial(MATERIAL_PARAM);
@@ -250,17 +265,20 @@ const EARTH_ORBIT = {
         
         const nowTime = (Date.now() - startTime) / 1000;
         // 月の軌道上を動かす
-        const moonVector3 = getXxx(MOON_ORBIT.vector1, MOON_ORBIT.vector2, nowTime);
+        const moonVector3 = getOrbit(MOON_ORBIT.vector1, MOON_ORBIT.vector2, nowTime);
         moon.position.set(moonVector3.x, moonVector3.y, moonVector3.z);
 
         // 地球の軌道上を動かす
-        const earthVector3 = getXxx(EARTH_ORBIT.vector1, EARTH_ORBIT.vector2, nowTime/4);
+        const earthVector3 = getOrbit(EARTH_ORBIT.vector1, EARTH_ORBIT.vector2, nowTime/4);
         earthAndMoon.position.set(earthVector3.x, earthVector3.y, earthVector3.z);
 
         // 弾の位置を更新
         if (isShotted) {
             bullet.position.add(bulletVector);
         }
+
+        sunTexture.offset.x += 0.001;
+        sunTexture.offset.y += 0.001;
 
         // 地球自転
         earthAndMoon.rotation.y += 0.005;
@@ -271,7 +289,7 @@ const EARTH_ORBIT = {
     /**
      * 2つのベクトルから軌道を取得（内部でクオータニオンを使用）
      */
-    const getXxx = (
+    const getOrbit = (
         vector1: THREE.Vector3,
         vector2: THREE.Vector3,
         radian: number,
@@ -292,6 +310,7 @@ const EARTH_ORBIT = {
     ) => {
         return vector1.clone().cross(vector2).normalize();
     }
+
     /**
      * 円の軌道の座標を配列で返します
      */
@@ -321,11 +340,13 @@ const EARTH_ORBIT = {
         return vertices;
     };
 
+    /**
+     * Promiseを返すテクスチャloader
+     */
     async function asyncLoader(path: string): Promise<THREE.Texture> {
         const loader = new THREE.TextureLoader();
         return new Promise((resolve, reject) => {
             loader.load(path, (texture) => {resolve(texture)});
         });
     }
-
 })();
