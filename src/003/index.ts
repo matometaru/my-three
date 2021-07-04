@@ -220,8 +220,8 @@ const EARTH_ORBIT = {
         rocket.scale.setScalar(5);
         // 初期位置を地球の上のあたりに移動させておく
         rocket.position.set(0.0, 2.0, 0.0);
-        // ロケットの進行方向の初期値を設定しておく（真上に向かう）
-        rocketVector = new THREE.Vector3(0.0, -1.0, 0.0);
+        // ロケットの進行方向の初期値を設定しておく（初期の三角錐の向きと同じ真上に向かうベクトルを設定）
+        rocketVector = new THREE.Vector3(0.0, 1.0, 0.0);
         earthAndMoon.add(rocket);
 
         // 月の軌道を作成
@@ -277,7 +277,6 @@ const EARTH_ORBIT = {
 
     function render() {
         if(run === true){requestAnimationFrame(render);}
-        const prevVector = earthAndMoon.position.clone();
         
         const nowTime = (Date.now() - startTime) / 1000;
         // 月の軌道上を動かす
@@ -293,38 +292,29 @@ const EARTH_ORBIT = {
             bullet.position.add(bulletVector);
         }
 
-        // ロケットと月の位置関係からベクトルを作り、単位化する（以前と同じ内容）
-        const vectorOfSatelliteToMoon = sun.position.clone().sub(earthAndMoon.position);
-        vectorOfSatelliteToMoon.normalize();
-        // 相互の位置関係ベクトルと、ロケットの進行方向とを合成する
-        vectorOfSatelliteToMoon.multiplyScalar(0.1); // まずはちょっと小さくして……
-        rocketVector.add(vectorOfSatelliteToMoon); // 次にこれを加算して……
-        rocketVector.normalize(); // (B) 最後に進行方向ベクトルは単位化する
-        // rocket.position.add(rocketVector.clone().multiplyScalar(0.05));
-
-        // - クォータニオン関連 -----------------------------------------------
-        // ここは数学的な予備知識のあるひと向けのオマケです。
-        // ベクトルの内積や外積が何を表すものなのかがわかっていないと、ちょっと
-        // 意味不明な可能性が大きいですので、仮に見ても意味がわからなかったとし
-        // ても、落ち込まないように！
-        // --------------------------------------------------------------------
-        // (C) 変換前と変換後のふたつのベクトルから外積で接線ベクトルを求める @@@
-        const tangent = new THREE.Vector3().crossVectors(prevVector, rocketVector).normalize();
-        // (D) 変換前と変換後のふたつのベクトルから内積でコサインを取り出す @@@
-        const cos = prevVector.dot(rocketVector);
-        // (D) コサインをラジアンに戻す @@@
+        // 地球と太陽の位置関係からベクトルを作り、単位化する
+        const vectorOfRocketToSun = sun.position.clone().sub(earthAndMoon.position);
+        vectorOfRocketToSun.normalize();
+        // 回転前後の2のベクトルから外積で接線ベクトルを求める
+        const tangent = new THREE.Vector3().crossVectors(rocketVector, vectorOfRocketToSun).normalize();
+        // 回転前後の2のベクトルから内積でコサインを取り出す
+        const cos = rocketVector.dot(vectorOfRocketToSun);
+        // コサインをラジアンに戻す
         const radians = Math.acos(cos);
-        // 求めた接線ベクトルとラジアンからクォータニオンを定義 @@@
+        // 求めた接線ベクトルとラジアンからクォータニオンを定義
         const qtn = new THREE.Quaternion();
         qtn.setFromAxisAngle(new THREE.Vector3(tangent.x, tangent.y, tangent.z), radians);
-        // ロケットの現在のクォータニオンに乗算する @@@
+        // ロケットの現在のクォータニオンに乗算する（実際の回転処理を行うのはここ）
         rocket.quaternion.premultiply(qtn);
+        // ロケットの進行方向の値を更新する（次のフレームで計算に使用するため更新）
+        rocketVector = vectorOfRocketToSun;
 
+        // 太陽のアニメーション
         sunTexture.offset.x += 0.001;
         sunTexture.offset.y += 0.001;
 
         // 地球自転
-        earthAndMoon.rotation.y += 0.005;
+        earth.rotation.y += 0.005;
 
         renderer.render(scene, camera);
     };
