@@ -14,11 +14,12 @@
 
 (() => {
     // 複数の関数で利用する広いスコープが必要な変数を宣言しておく
-    let position = null;
+    let position = [];
     let color = null;
     let vbo = null;
     let uniform = null;
     let mouse = [0, 0];
+    let vertex = 5;
 
     // webgl.js に記載のクラスをインスタンス化する
     const webgl = new WebGLUtility();
@@ -36,6 +37,18 @@
             mouse[0] = event.clientX / window.innerWidth;
             mouse[1] = event.clientY / window.innerHeight;
         }, false);
+
+        // キーダウンイベント
+        window.addEventListener('keydown', (event) => {
+            switch(event.key){
+                case 'ArrowRight':
+                    vertex++;
+                    break;
+                case 'ArrowLeft':
+                    vertex--;
+                    break;
+            }
+        });
 
         let vs = null;
         let fs = null;
@@ -65,53 +78,55 @@
         const positions = [];
         const radian = 2 * Math.PI / n;
         for (let i=1; i<=n; i++) {
-            const y = Math.sin(radian * i) * 0.5;
-            const x = Math.cos(radian * i) * 0.5;
+            const x = Math.cos(radian * i);
+            const y = Math.sin(radian * i);
             positions.push([x, y, 0]);
         }
         return positions;
     }
 
     /**
+     * N個の頂点座標を作成
+     * デフォルトは三角形
+     */
+    function createCircleColors(n = 3) {
+        const colors = [];
+        const radian = 2 * Math.PI / n;
+        for (let i=1; i<=n; i++) {
+            const x = Math.cos(radian * i);
+            const y = Math.sin(radian * i);
+            colors.push([x, y, x, 1.0]);
+        }
+        return colors;
+    }
+
+    /**
      * 頂点属性（頂点ジオメトリ）のセットアップを行う
      */
     function setupGeometry(){
-        const positions = createCirclePositions(5);
-        console.log(positions);
-        position = [
-            ...positions[0],
-            ...positions[1],
-            ...positions[2],
-            
-            ...positions[0],
-            ...positions[2],
-            ...positions[3],
-            
-            ...positions[0],
-            ...positions[3],
-            ...positions[4],
-        ];
+        position = []
+        color = []
+
+        const positions = createCirclePositions(vertex);
+        for (let i=0; i<vertex; i++) {
+            let last = i + 1;
+            if (i+1===vertex) last = 0;
+            position.push([0, 0, 0])
+            position.push(positions[i])
+            position.push(positions[last])
+        }
+        position = position.flat();
         
-        const colors = [
-            [1.0, 0.0, 0.0, 1.0],
-            [0.0, 1.0, 0.0, 1.0],
-            [0.0, 1.0, 0.0, 1.0],
-            [0.0, 0.0, 1.0, 1.0],
-            [0.0, 0.0, 1.0, 1.0],
-        ];
-        color = [
-            ...colors[0],
-            ...colors[1],
-            ...colors[2],
-            
-            ...colors[0],
-            ...colors[2],
-            ...colors[3],
-            
-            ...colors[0],
-            ...colors[3],
-            ...colors[4],
-        ];
+        const colors = createCircleColors(vertex);
+        for (let i=0; i<vertex; i++) {
+            let last = i + 1;
+            if (i+1===vertex) last = 0;
+            color.push([0,0,0,1])
+            color.push(colors[i])
+            color.push(colors[last])
+        }
+        color = color.flat();
+
         // 配列に入れておく
         vbo = [
             webgl.createVBO(position),
@@ -135,6 +150,7 @@
         // uniform 変数のロケーションを取得する
         uniform = {
             mouse: gl.getUniformLocation(webgl.program, 'mouse'),
+            // vertex: gl.getUniformLocation(webgl.program, 'vertex'),
         };
     }
 
@@ -158,12 +174,16 @@
         requestAnimationFrame(render);
 
         // レンダリング時のクリア処理など
+        setupGeometry();
+        setupLocation();
         setupRendering();
 
         // uniform 変数は常に変化し得るので毎フレーム値を送信する
         gl.uniform2fv(uniform.mouse, mouse);
+        // gl.uniform1i(uniform.vertex, vertex);
 
         // 登録されている VBO の情報をもとに頂点を描画する
         gl.drawArrays(gl.TRIANGLES, 0, position.length / 3);
     }
 })();
+
