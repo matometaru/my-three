@@ -56,18 +56,28 @@
             render();
         });
     }, false);
+    
+    /**
+     * N個の頂点座標を作成
+     * デフォルトは三角形
+     */
+    function createCirclePositions(n = 3) {
+        const positions = [];
+        const radian = 2 * Math.PI / n;
+        for (let i=1; i<=n; i++) {
+            const y = Math.sin(radian * i) * 0.5;
+            const x = Math.cos(radian * i) * 0.5;
+            positions.push([x, y, 0]);
+        }
+        return positions;
+    }
 
     /**
      * 頂点属性（頂点ジオメトリ）のセットアップを行う
      */
     function setupGeometry(){
-        const positions = [
-            [0.0,  0.5,  0.0], // 1の頂点の x, y, z 座標
-            [0.7,  0.0,  0.0], // 2の頂点の x, y, z 座標
-            [0.5, -0.5,  0.0], // 3の頂点の x, y, z 座標
-            [-0.5, -0.5, 0.0], // 4の頂点の x, y, z 座標
-            [-0.7,  0.0, 0.0], // 5の頂点の x, y, z 座標
-        ];
+        const positions = createCirclePositions(5);
+        console.log(positions);
         position = [
             ...positions[0],
             ...positions[1],
@@ -157,4 +167,3 @@
         gl.drawArrays(gl.TRIANGLES, 0, position.length / 3);
     }
 })();
-
