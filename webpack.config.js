@@ -8,6 +8,8 @@ module.exports = {
       "001/index": "./src/001/index.ts",
       "002/index": "./src/002/index.ts",
       "003/index": "./src/003/index.ts",
+      "raycast/index": "./src/raycast/index.ts",
+      "house/index": "./src/house/index.ts",
     },
     // ファイルの出力設定
     output: {
